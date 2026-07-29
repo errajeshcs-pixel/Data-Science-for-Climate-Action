@@ -10,6 +10,7 @@
 [![Machine Learning](https://img.shields.io/badge/Machine-Learning-green.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
 [![Research](https://img.shields.io/badge/Research-FICTA%202026-success.svg)]()
+<img width="449" height="310" alt="image" src="https://github.com/user-attachments/assets/41085cf0-eec3-427e-be84-ef3da6cdcaf1" />
 
 ### Forecasting Agricultural Greenhouse Gas Emissions Using Machine Learning, Data Engineering and Interactive Analytics
 
