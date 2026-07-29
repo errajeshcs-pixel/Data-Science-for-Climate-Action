@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>"What-If" Scenario Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .control-panel {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .loader {
+            border: 5px solid #e5e7eb;
+            border-radius: 50%;
+            border-top: 5px solid #3b82f6;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-6">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-gray-900">"What-If" Scenario Simulator</h1>
+            <p class="text-gray-600 mt-2">Explore how GDP and population growth might affect future GHG emissions.</p>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loader-container" class="flex flex-col items-center justify-center h-screen">
+            <div class="loader"></div>
+            <p class="mt-4 text-lg text-gray-600">Loading global data and preparing models...</p>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <div id="dashboard-content" class="hidden">
+            <!-- Controls -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="control-panel">
+                    <label for="country-select" class="block text-sm font-medium text-gray-700 mb-2">1. Select Country:</label>
+                    <select id="country-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+                <div class="control-panel">
+                    <label for="gdp-slider" class="block text-sm font-medium text-gray-700 mb-2">2. Assume Annual GDP Growth: <span id="gdp-label" class="font-bold">2.0%</span></label>
+                    <input type="range" id="gdp-slider" min="-5" max="10" value="2" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div class="control-panel">
+                    <label for="pop-slider" class="block text-sm font-medium text-gray-700 mb-2">3. Assume Annual Population Growth: <span id="pop-label" class="font-bold">0.5%</span></label>
+                    <input type="range" id="pop-slider" min="-2" max="5" value="0.5" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Main Chart -->
+            <div class="control-panel">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 id="chart-title" class="text-xl font-semibold">Scenario Forecast</h2>
+                    <div id="forecast-loader" class="hidden items-center">
+                        <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span class="ml-2 text-sm text-gray-600">Running Simulation...</span>
+                    </div>
+                </div>
+                <canvas id="scenario-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // DOM Elements
+            const loader = document.getElementById('loader-container');
+            const dashboard = document.getElementById('dashboard-content');
+            const countrySelect = document.getElementById('country-select');
+            const gdpSlider = document.getElementById('gdp-slider');
+            const popSlider = document.getElementById('pop-slider');
+            const gdpLabel = document.getElementById('gdp-label');
+            const popLabel = document.getElementById('pop-label');
+            const chartTitle = document.getElementById('chart-title');
+            const forecastLoader = document.getElementById('forecast-loader');
+            const scenarioChartCanvas = document.getElementById('scenario-chart');
+
+            let allData = [];
+            let scenarioChart;
+
+            // --- Data Loading ---
+            async function loadData() {
+                try {
+                    const url = 'https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.csv';
+                    const response = await fetch(url);
+                    const csvText = await response.text();
+                    const lines = csvText.trim().split('\n');
+                    const headers = lines[0].split(',');
+                    
+                    const requiredIndices = {
+                        country: headers.indexOf('country'),
+                        year: headers.indexOf('year'),
+                        population: headers.indexOf('population'),
+                        gdp: headers.indexOf('gdp'),
+                        total_ghg: headers.indexOf('total_ghg')
+                    };
+
+                    const nonCountryEntities = new Set(['World', 'Asia', 'Oceania', 'Europe', 'Africa', 'North America', 'South America', 'High-income countries', 'Low-income countries', 'Lower-middle-income countries', 'Upper-middle-income countries', 'European Union (27)', 'European Union (28)']);
+
+                    allData = lines.slice(1).map(line => {
+                        const values = line.split(',');
+                        const country = values[requiredIndices.country];
+                        if (!country || nonCountryEntities.has(country)) return null;
+                        
+                        const row = {};
+                        for (const [key, index] of Object.entries(requiredIndices)) {
+                            row[key] = parseFloat(values[index]);
+                        }
+                        row.country = country; // ensure country name is a string
+                        return row;
+                    }).filter(Boolean);
+
+                    const countries = [...new Set(allData.map(d => d.country))].sort();
+                    countries.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c;
+                        option.textContent = c;
+                        countrySelect.appendChild(option);
+                    });
+                    countrySelect.value = 'United States'; // Default selection
+
+                    loader.style.display = 'none';
+                    dashboard.classList.remove('hidden');
+
+                    runSimulation();
+                } catch (error) {
+                    loader.innerHTML = '<p class="text-red-500 font-semibold">Failed to load data.</p>';
+                    console.error("Data loading failed:", error);
+                }
+            }
+
+            // --- Main Simulation Logic ---
+            async function runSimulation() {
+                forecastLoader.classList.remove('hidden');
+                forecastLoader.classList.add('flex');
+                
+                const selectedCountry = countrySelect.value;
+                const gdpGrowth = parseFloat(gdpSlider.value) / 100;
+                const popGrowth = parseFloat(popSlider.value) / 100;
+                chartTitle.textContent = `Scenario Forecast for ${selectedCountry}`;
+
+                const countryData = allData.filter(d => 
+                    d.country === selectedCountry && 
+                    !isNaN(d.population) && 
+                    !isNaN(d.gdp) && 
+                    !isNaN(d.total_ghg)
+                ).sort((a, b) => a.year - b.year);
+                
+                const baselineForecast = await generateUnivariateForecast(countryData.map(d => d.total_ghg));
+                const whatIfForecast = await generateMultivariateForecast(countryData, popGrowth, gdpGrowth);
+                
+                updateChart(countryData, baselineForecast, whatIfForecast);
+                
+                forecastLoader.classList.add('hidden');
+                forecastLoader.classList.remove('flex');
+            }
+
+            // --- Chart Update ---
+            function updateChart(historical, baseline, whatif) {
+                if (historical.length === 0) {
+                    if (scenarioChart) scenarioChart.destroy();
+                    const ctx = scenarioChartCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, scenarioChartCanvas.width, scenarioChartCanvas.height);
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = "#6b7280";
+                    ctx.font = "16px Inter";
+                    ctx.fillText("Not enough data to create a forecast for this country.", scenarioChartCanvas.width / 2, 50);
+                    return;
+                }
+
+                const lastHistYear = historical[historical.length - 1].year;
+                
+                const historicalLabels = historical.map(d => d.year);
+                const historicalData = historical.map(d => d.total_ghg);
+                
+                const baselineLabels = baseline.map((_, i) => lastHistYear + i + 1);
+                const whatifLabels = whatif.map((_, i) => lastHistYear + i + 1);
+                
+                const allLabels = [...new Set([...historicalLabels, ...baselineLabels, ...whatifLabels])].sort();
+
+                if (scenarioChart) scenarioChart.destroy();
+                scenarioChart = new Chart(scenarioChartCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: allLabels,
+                        datasets: [{
+                            label: 'Historical GHG',
+                            data: historicalData,
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'Baseline Forecast',
+                            data: [...Array(historicalData.length).fill(null), ...baseline],
+                            borderColor: 'rgba(22, 163, 74, 1)',
+                            borderDash: [5, 5],
+                            fill: false
+                        }, {
+                            label: '"What-If" Scenario',
+                            data: [...Array(historicalData.length).fill(null), ...whatif],
+                            borderColor: 'rgba(239, 68, 68, 1)',
+                            borderDash: [5, 5],
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: true } },
+                        scales: { y: { title: { display: true, text: 'Total GHG (Million Tonnes)' } } }
+                    }
+                });
+            }
+
+            // --- LSTM Helper Functions ---
+            function createSequences(data, n_steps) {
+                const X = [];
+                const y = [];
+                for (let i = 0; i < data.length - n_steps; i++) {
+                    X.push(data.slice(i, i + n_steps));
+                    y.push(data[i + n_steps]);
+                }
+                return [X, y];
+            }
+
+            async function generateUnivariateForecast(values) {
+                if (values.length < 20) return [];
+                const n_steps = 10;
+                const n_forecast = 15;
+
+                const scaler = {
+                    min: Math.min(...values),
+                    max: Math.max(...values),
+                    scale(v) { return this.max === this.min ? 0 : (v - this.min) / (this.max - this.min); },
+                    unscale(v) { return v * (this.max - this.min) + this.min; }
+                };
+                
+                const scaled = values.map(v => scaler.scale(v));
+                const [X, y] = createSequences(scaled, n_steps);
+                
+                // FIX: Explicitly reshape the 2D array [sequences, timesteps] to a 3D tensor [sequences, timesteps, 1].
+                const trainX = tf.tensor2d(X).reshape([X.length, n_steps, 1]);
+                const trainY = tf.tensor2d(y, [y.length, 1]);
+                
+                const model = tf.sequential();
+                model.add(tf.layers.lstm({ units: 50, activation: 'relu', inputShape: [n_steps, 1] }));
+                model.add(tf.layers.dense({ units: 1 }));
+                model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+                await model.fit(trainX, trainY, { epochs: 50, verbose: 0 });
+
+                let forecastInput = scaled.slice(-n_steps);
+                const forecastResult = [];
+                for (let i = 0; i < n_forecast; i++) {
+                    const predTensor = model.predict(tf.tensor2d(forecastInput, [1, n_steps]).reshape([1, n_steps, 1]));
+                    const pred = await predTensor.data();
+                    forecastResult.push(pred[0]);
+                    forecastInput = [...forecastInput.slice(1), pred[0]];
+                    tf.dispose(predTensor);
+                }
+                return forecastResult.map(v => scaler.unscale(v));
+            }
+
+            async function generateMultivariateForecast(data, popGrowth, gdpGrowth) {
+                if (data.length < 20) return [];
+                const n_steps = 10;
+                const n_forecast = 15;
+                const features = ['population', 'gdp', 'total_ghg'];
+
+                const scaler = {};
+                features.forEach(f => {
+                    const values = data.map(d => d[f]);
+                    scaler[f] = { min: Math.min(...values), max: Math.max(...values) };
+                });
+
+                const scaledData = data.map(row => features.map(f => {
+                    const s = scaler[f];
+                    return s.max === s.min ? 0 : (row[f] - s.min) / (s.max - s.min);
+                }));
+
+                const [X, y] = createSequences(scaledData, n_steps);
+                
+                // FIX: Data is already 3D, so tf.tensor3d works directly.
+                const trainX = tf.tensor3d(X);
+                const trainY = tf.tensor2d(y);
+                
+                const model = tf.sequential();
+                model.add(tf.layers.lstm({ units: 50, activation: 'relu', inputShape: [n_steps, features.length] }));
+                model.add(tf.layers.dense({ units: features.length }));
+                model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+                await model.fit(trainX, trainY, { epochs: 50, verbose: 0 });
+
+                let lastSequence = scaledData.slice(-n_steps);
+                let lastKnownPop = data[data.length - 1].population;
+                let lastKnownGdp = data[data.length - 1].gdp;
+                const forecastResult = [];
+
+                for (let i = 0; i < n_forecast; i++) {
+                    const predTensor = model.predict(tf.tensor3d([lastSequence]));
+                    const pred = await predTensor.data();
+                    
+                    forecastResult.push(pred[2]); // Only need the GHG prediction
+
+                    lastKnownPop *= (1 + popGrowth);
+                    lastKnownGdp *= (1 + gdpGrowth);
+                    
+                    const sPop = scaler.population;
+                    const sGdp = scaler.gdp;
+
+                    const nextPopScaled = sPop.max === sPop.min ? 0 : (lastKnownPop - sPop.min) / (sPop.max - sPop.min);
+                    const nextGdpScaled = sGdp.max === sGdp.min ? 0 : (lastKnownGdp - sGdp.min) / (sGdp.max - sGdp.min);
+                    
+                    const nextGhgScaled = pred[2];
+
+                    const nextStep = [nextPopScaled, nextGdpScaled, nextGhgScaled];
+                    lastSequence = [...lastSequence.slice(1), nextStep];
+                    tf.dispose(predTensor);
+                }
+                
+                const s = scaler.total_ghg;
+                return forecastResult.map(v => v * (s.max - s.min) + s.min);
+            }
+
+            // --- Event Listeners ---
+            countrySelect.addEventListener('change', runSimulation);
+            gdpSlider.addEventListener('input', () => { gdpLabel.textContent = `${parseFloat(gdpSlider.value).toFixed(1)}%`; });
+            popSlider.addEventListener('input', () => { popLabel.textContent = `${parseFloat(popSlider.value).toFixed(1)}%`; });
+            gdpSlider.addEventListener('change', runSimulation);
+            popSlider.addEventListener('change', runSimulation);
+            
+            // --- Initial Load ---
+            await loadData();
+        });
+    </script>
+</body>
+</html>

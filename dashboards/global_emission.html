@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Global Emissions Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.29.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- TensorFlow.js for in-browser ML -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .loader {
+            border: 5px solid #e5e7eb;
+            border-radius: 50%;
+            border-top: 5px solid #3b82f6;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-6">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-gray-900">Global Emissions Dashboard</h1>
+            <p class="text-gray-600 mt-2">Explore historical emissions and view AI-powered forecasts.</p>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loader-container" class="flex flex-col items-center justify-center h-screen">
+            <div class="loader"></div>
+            <p class="mt-4 text-lg text-gray-600">Loading global emissions data...</p>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <div id="dashboard-content" class="hidden">
+            <!-- Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="chart-container">
+                    <label for="country-select" class="block text-sm font-medium text-gray-700 mb-2">Select Country:</label>
+                    <select id="country-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+                <div class="chart-container">
+                    <label for="metric-select" class="block text-sm font-medium text-gray-700 mb-2">Select Metric:</label>
+                    <select id="metric-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+                        <option value="total_ghg">Total Greenhouse Gas (Million Tonnes)</option>
+                        <option value="co2">CO2 Emissions (Million Tonnes)</option>
+                        <option value="co2_per_capita">CO2 per Capita (Tonnes)</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <label for="year-slider" class="block text-sm font-medium text-gray-700 mb-2">Select Year for Map: <span id="year-label" class="font-bold"></span></label>
+                    <input type="range" id="year-slider" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Main Visualization Row -->
+            <div class="grid grid-cols-1 gap-6 mb-6">
+                <div class="chart-container">
+                    <h2 class="text-xl font-semibold mb-4 text-center">Global Emissions Map</h2>
+                    <div id="map-chart" style="height: 500px;"></div>
+                </div>
+            </div>
+
+            <!-- Analysis Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Historical Trend Chart -->
+                <div class="chart-container">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="historical-chart-title" class="text-xl font-semibold text-center">Historical Trend</h2>
+                        <div id="forecast-loader" class="hidden items-center">
+                            <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="ml-2 text-sm text-gray-600">Forecasting...</span>
+                        </div>
+                    </div>
+                    <canvas id="historical-chart"></canvas>
+                </div>
+                <!-- Emission Breakdown Chart -->
+                <div class="chart-container">
+                     <div class="flex justify-between items-center mb-4">
+                        <h2 id="breakdown-chart-title" class="text-xl font-semibold">Emissions Breakdown</h2>
+                        <select id="breakdown-year-select" class="p-1 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500"></select>
+                     </div>
+                     <canvas id="breakdown-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loader = document.getElementById('loader-container');
+            const dashboard = document.getElementById('dashboard-content');
+            const countrySelect = document.getElementById('country-select');
+            const metricSelect = document.getElementById('metric-select');
+            const yearSlider = document.getElementById('year-slider');
+            const yearLabel = document.getElementById('year-label');
+            const mapChartDiv = document.getElementById('map-chart');
+            const historicalChartTitle = document.getElementById('historical-chart-title');
+            const forecastLoader = document.getElementById('forecast-loader');
+            const breakdownChartTitle = document.getElementById('breakdown-chart-title');
+            const breakdownYearSelect = document.getElementById('breakdown-year-select');
+
+            let allData = [];
+            let historicalChart, breakdownChart;
+            let mapListenerAttached = false;
+
+            // --- Data Loading and Processing ---
+            async function loadData() {
+                try {
+                    const url = 'https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.csv';
+                    const response = await fetch(url);
+                    const csvText = await response.text();
+                    const lines = csvText.trim().split('\n');
+                    const headers = lines[0].split(',');
+                    
+                    const requiredIndices = {
+                        country: headers.indexOf('country'),
+                        iso_code: headers.indexOf('iso_code'),
+                        year: headers.indexOf('year'),
+                        total_ghg: headers.indexOf('total_ghg'),
+                        co2: headers.indexOf('co2'),
+                        co2_per_capita: headers.indexOf('co2_per_capita'),
+                        methane: headers.indexOf('methane'),
+                        nitrous_oxide: headers.indexOf('nitrous_oxide')
+                    };
+
+                    const nonCountryEntities = new Set(['World', 'Asia', 'Oceania', 'Europe', 'Africa', 'North America', 'South America', 'High-income countries', 'Low-income countries', 'Lower-middle-income countries', 'Upper-middle-income countries', 'European Union (27)', 'European Union (28)']);
+
+                    allData = lines.slice(1).map(line => {
+                        const values = line.split(',');
+                        const country = values[requiredIndices.country];
+                        const iso_code = values[requiredIndices.iso_code];
+                        
+                        if (!iso_code || nonCountryEntities.has(country)) return null;
+
+                        const row = { country, iso_code };
+                        for (const [key, index] of Object.entries(requiredIndices)) {
+                            if (key !== 'country' && key !== 'iso_code') {
+                                row[key] = index > -1 ? parseFloat(values[index]) : NaN;
+                            }
+                        }
+                        return row;
+                    }).filter(Boolean);
+
+                    const years = [...new Set(allData.map(d => d.year).filter(y => y))].sort();
+                    yearSlider.min = years[0];
+                    yearSlider.max = years[years.length - 1];
+                    yearSlider.value = years[years.length - 1];
+                    
+                    const countries = [...new Set(allData.map(d => d.country))].sort();
+                    countries.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c;
+                        option.textContent = c;
+                        countrySelect.appendChild(option);
+                    });
+                    countrySelect.value = "United States"; // Default
+
+                    loader.style.display = 'none';
+                    dashboard.classList.remove('hidden');
+
+                    updateDashboard();
+                    updateAnalysisCharts(countrySelect.value, metricSelect.value);
+
+                } catch (error) {
+                    loader.innerHTML = '<p class="text-red-500 font-semibold">Failed to load data.</p>';
+                    console.error("Data loading failed:", error);
+                }
+            }
+            
+            // --- Dashboard Update Logic ---
+            function updateDashboard() {
+                const selectedYear = parseInt(yearSlider.value);
+                const selectedMetric = metricSelect.value;
+                yearLabel.textContent = selectedYear;
+
+                const yearData = allData.filter(d => d.year === selectedYear && !isNaN(d[selectedMetric]));
+                updateMap(yearData, selectedMetric);
+            }
+            
+            function updateAnalysisCharts(country, metric) {
+                updateHistoricalChart(country, metric);
+                populateBreakdownYearSelector(country);
+            }
+
+            // --- Charting Functions ---
+            function updateMap(data, metric) {
+                const mapData = [{
+                    type: 'choropleth',
+                    locations: data.map(d => d.iso_code),
+                    z: data.map(d => d[metric]),
+                    text: data.map(d => d.country),
+                    colorscale: 'Viridis',
+                    reversescale: true,
+                    marker: { line: { color: 'rgb(255,255,255)', width: 0.5 } },
+                    colorbar: { title: metricSelect.options[metricSelect.selectedIndex].text.split('(')[0].trim() }
+                }];
+
+                const layout = {
+                    geo: { projection: { type: 'robinson' }, showframe: false, bgcolor: 'rgba(0,0,0,0)' },
+                    margin: { t: 0, b: 0, l: 0, r: 0 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                };
+
+                Plotly.newPlot(mapChartDiv, mapData, layout, {responsive: true});
+                
+                if (!mapListenerAttached) {
+                    mapChartDiv.on('plotly_click', (data) => {
+                        if (data.points.length > 0) {
+                            const countryName = data.points[0].text;
+                            countrySelect.value = countryName; // Sync dropdown
+                            updateAnalysisCharts(countryName, metricSelect.value);
+                        }
+                    });
+                    mapListenerAttached = true;
+                }
+            }
+            
+            async function updateHistoricalChart(country, metric) {
+                historicalChartTitle.textContent = `Historical Trend for ${country}`;
+                forecastLoader.classList.remove('hidden');
+                forecastLoader.classList.add('flex');
+
+                const countryData = allData.filter(d => d.country === country && !isNaN(d[metric])).sort((a, b) => a.year - b.year);
+                
+                const forecast = await generateLstmForecast(countryData, metric);
+
+                const historicalLabels = countryData.map(d => d.year);
+                const historicalValues = countryData.map(d => d[metric]);
+
+                const forecastLabels = forecast.map(d => d.year);
+                const forecastValues = forecast.map(d => d.value);
+
+                const chartData = {
+                    labels: [...historicalLabels, ...forecastLabels],
+                    datasets: [{
+                        label: 'Historical',
+                        data: historicalValues,
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }, {
+                        label: 'Forecast',
+                        data: [...Array(historicalValues.length).fill(null), ...forecastValues],
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.1
+                    }]
+                };
+
+                if (historicalChart) historicalChart.destroy();
+                historicalChart = new Chart(document.getElementById('historical-chart'), {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: true } }
+                    }
+                });
+                forecastLoader.classList.add('hidden');
+                forecastLoader.classList.remove('flex');
+            }
+            
+            function populateBreakdownYearSelector(country) {
+                const countryData = allData.filter(d => d.country === country && !isNaN(d.co2) && !isNaN(d.methane) && !isNaN(d.nitrous_oxide));
+                const availableYears = [...new Set(countryData.map(d => d.year))].sort((a, b) => b - a);
+                
+                breakdownYearSelect.innerHTML = ''; // Clear previous options
+                
+                if (availableYears.length > 0) {
+                    availableYears.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        breakdownYearSelect.appendChild(option);
+                    });
+                    updateBreakdownChart(country, availableYears[0]);
+                } else {
+                    updateBreakdownChart(country, null); // No data available
+                }
+            }
+
+            function updateBreakdownChart(country, year) {
+                if (breakdownChart) breakdownChart.destroy();
+                const canvas = document.getElementById('breakdown-chart');
+                const ctx = canvas.getContext('2d');
+                
+                breakdownChartTitle.textContent = `Emissions Breakdown for ${country}`;
+
+                if (!year) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = "#6b7280";
+                    ctx.font = "16px Inter";
+                    ctx.fillText("No breakdown data available.", canvas.width / 2, 50);
+                    return;
+                }
+
+                breakdownChartTitle.textContent = `Emissions Breakdown for ${country} (${year})`;
+                const yearData = allData.find(d => d.country === country && d.year === year);
+
+                const breakdownData = {
+                    labels: ['CO2', 'Methane', 'Nitrous Oxide'],
+                    datasets: [{
+                        data: [yearData.co2, yearData.methane, yearData.nitrous_oxide],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                        hoverOffset: 4
+                    }]
+                };
+
+                breakdownChart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: breakdownData,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed !== null) label += context.parsed.toFixed(2) + ' Million Tonnes';
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- LSTM Forecasting Logic ---
+            async function generateLstmForecast(data, metric) {
+                const values = data.map(d => d[metric]);
+                if (values.length < 20) return [];
+
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                if (max === min) return [];
+                const scaled = values.map(v => (v - min) / (max - min));
+
+                const n_steps = 10;
+                const X = [];
+                for (let i = 0; i < scaled.length - n_steps; i++) {
+                    X.push(scaled.slice(i, i + n_steps));
+                }
+                const y = scaled.slice(n_steps);
+                
+                const trainX = tf.tensor2d(X).reshape([X.length, n_steps, 1]);
+                const trainY = tf.tensor2d(y, [y.length, 1]);
+
+                const model = tf.sequential();
+                model.add(tf.layers.lstm({ units: 50, activation: 'relu', inputShape: [n_steps, 1] }));
+                model.add(tf.layers.dense({ units: 1 }));
+                model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+                
+                await model.fit(trainX, trainY, { epochs: 50, verbose: 0 });
+
+                let forecastInput = scaled.slice(-n_steps);
+                const forecastResult = [];
+                for (let i = 0; i < 5; i++) {
+                    const predTensor = model.predict(tf.tensor2d(forecastInput, [1, n_steps]).reshape([1, n_steps, 1]));
+                    const pred = await predTensor.data();
+                    forecastResult.push(pred[0]);
+                    forecastInput = [...forecastInput.slice(1), pred[0]];
+                    tf.dispose(predTensor);
+                }
+                
+                const unscaledForecast = forecastResult.map(v => v * (max - min) + min);
+                const lastYear = data[data.length - 1].year;
+                return unscaledForecast.map((val, i) => ({ year: lastYear + i + 1, value: val }));
+            }
+
+            // --- Event Listeners ---
+            countrySelect.addEventListener('change', (event) => {
+                updateAnalysisCharts(event.target.value, metricSelect.value);
+            });
+            metricSelect.addEventListener('change', () => {
+                updateDashboard();
+                updateAnalysisCharts(countrySelect.value, metricSelect.value);
+            });
+            yearSlider.addEventListener('input', () => { yearLabel.textContent = yearSlider.value; });
+            yearSlider.addEventListener('change', updateDashboard);
+            breakdownYearSelect.addEventListener('change', (event) => {
+                updateBreakdownChart(countrySelect.value, parseInt(event.target.value));
+            });
+            
+            // --- Initial Load ---
+            await loadData();
+        });
+    </script>
+</body>
+</html>
