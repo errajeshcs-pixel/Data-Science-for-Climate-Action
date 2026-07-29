@@ -38,7 +38,7 @@
 
 Climate change is one of today's most pressing global challenges. Agriculture contributes significantly to greenhouse gas (GHG) emissions through livestock production, fertiliser application, and land management practices.
 
-This repository presents an **end-to-end AI-powered Climate Analytics Platform** that combines **Data Engineering, Machine Learning, Deep Learning, Time-Series Forecasting, and Interactive Dashboards** using a modern **Medallion Lakehouse Architecture**.
+This repository presents an **end-to-end AI-powered Climate Analytics Platform** that combines **Data Engineering, Machine Learning, Deep Learning, Time-Series Forecasting, and Interactive Dashboards** using a modern **Medallion Lakehouse Architecture**..
 
 The solution enables researchers, policymakers, and organisations to analyse historical emissions, forecast future trends, and evaluate sustainability scenarios through explainable AI.
 
