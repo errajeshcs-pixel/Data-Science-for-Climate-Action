@@ -165,18 +165,6 @@ International Conference on Frontiers of Intelligent Computing Theory and Applic
 
 Senior Data Architect | AI Researcher | Data Engineering Specialist
 
-**Areas of Expertise**
-
-- Artificial Intelligence
-- Machine Learning
-- Data Engineering
-- Cloud Architecture
-- Databricks
-- Azure
-- Big Data
-- Climate Analytics
-
----
 
 #  Acknowledgements
 
