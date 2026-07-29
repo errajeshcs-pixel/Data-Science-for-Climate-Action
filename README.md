@@ -11,8 +11,6 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
 [![Research](https://img.shields.io/badge/Research-FICTA%202026-success.svg)]()
 
-<img src="docs/images/banner.png" width="900">
-
 ### Forecasting Agricultural Greenhouse Gas Emissions Using Machine Learning, Data Engineering and Interactive Analytics
 
 </p>
@@ -109,7 +107,8 @@ The project compares multiple forecasting techniques.
 
 ##  Global Emissions Explorer
 
-<img src="docs/images/dashboard_global.png">
+<img width="940" height="554" alt="image" src="https://github.com/user-attachments/assets/70fb79db-294c-4bd8-bf50-e890c392b58e" />
+
 
 Explore historical greenhouse gas emissions across the world.
 
@@ -117,7 +116,8 @@ Explore historical greenhouse gas emissions across the world.
 
 ##  National Decoupling Index
 
-<img src="docs/images/dashboard_decoupling.png">
+<img width="940" height="457" alt="image" src="https://github.com/user-attachments/assets/8d1eee27-c562-431b-a14f-6728d704413b" />
+
 
 Ranks countries based on their economic growth while reducing emissions.
 
@@ -125,7 +125,8 @@ Ranks countries based on their economic growth while reducing emissions.
 
 ##  What-If Scenario Simulator
 
-<img src="docs/images/dashboard_whatif.png">
+<img width="940" height="624" alt="image" src="https://github.com/user-attachments/assets/919ca127-3158-4334-92d9-5ba6541c1f88" />
+
 
 Simulate how GDP and population growth influence future greenhouse gas emissions.
 
