@@ -1,12 +1,6 @@
-# Data-Science-for-Climate-Action
-Forecasting Agricultural Greenhouse Gas Emissions. Using Multivariate Machine Learning and Medallion Lakehouse Architecture
-
-
-
-
 <p align="center">
 
-# 🌍 Data Science for Climate Action
+#  Data Science for Climate Action
 
 ### AI-Powered Agricultural Greenhouse Gas Forecasting using Medallion Lakehouse Architecture
 
@@ -25,7 +19,7 @@ Forecasting Agricultural Greenhouse Gas Emissions. Using Multivariate Machine Le
 
 ---
 
-# 🚀 Overview
+#  Overview
 
 Climate change is one of the world's most pressing challenges. Agriculture contributes significantly to greenhouse gas emissions through livestock, fertilizer usage and land management practices.
 
@@ -35,7 +29,7 @@ The solution combines modern data engineering, predictive analytics, and interac
 
 ---
 
-# ⭐ Key Features
+#  Key Features
 
 - ✅ End-to-End Medallion Lakehouse Architecture
 - ✅ Bronze → Silver → Gold Data Pipeline
@@ -50,7 +44,7 @@ The solution combines modern data engineering, predictive analytics, and interac
 
 ---
 
-# 🏗 System Architecture
+#  System Architecture
 
 <p align="center">
 
@@ -151,7 +145,7 @@ This work demonstrates:
 
 ---
 
-# 📚 Research Publication
+#  Research Publication
 
 **Forecasting Agricultural Greenhouse Gas Emissions Using Multivariate Machine Learning and Medallion Lakehouse Architecture**
 
@@ -163,7 +157,7 @@ International Conference on Frontiers of Intelligent Computing Theory and Applic
 
 ---
 
-# 👨‍💻 About the Author
+#  About the Author
 
 ## Rajesh Kumar Singh
 
@@ -182,7 +176,7 @@ Senior Data Architect | AI Researcher | Data Engineering Specialist
 
 ---
 
-# ⭐ Acknowledgements
+#  Acknowledgements
 
 - Our World in Data
 - FAOSTAT
@@ -194,13 +188,13 @@ Senior Data Architect | AI Researcher | Data Engineering Specialist
 
 ---
 
-# 📜 License
+#  License
 
 Released under the MIT License.
 
 ---
 
-# ⭐ Support
+#  Support
 
 If you find this repository useful, please consider giving it a ⭐.
 
