@@ -139,9 +139,9 @@ The project follows the **Medallion Lakehouse Architecture**, ensuring scalable,
 
 #  License
 
-| **License** | **Status** |
-|-------------|------------|
-| MIT License |  Open Source |
+| **License** | 
+|-------------|
+| MIT License |
 
 ---
 
