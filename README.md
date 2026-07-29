@@ -2,7 +2,7 @@
 Forecasting Agricultural Greenhouse Gas Emissions. Using Multivariate Machine Learning and Medallion Lakehouse Architecture
 
 
-<img width="776" height="412" alt="image" src="https://github.com/user-attachments/assets/6190bc26-55ef-4284-af44-0394524731b7" />
+
 
 <p align="center">
 
@@ -60,31 +60,11 @@ The solution combines modern data engineering, predictive analytics, and interac
 
 The project follows the **Medallion Lakehouse Architecture** to ensure scalable, governed, and analytics-ready data processing.
 
-```
-Raw Data
-     │
-     ▼
- Bronze Layer
-     │
-     ▼
- Silver Layer
-     │
-     ▼
- Gold Layer
-     │
-     ▼
- Feature Engineering
-     │
-     ▼
- Machine Learning
-     │
-     ▼
- Interactive Dashboards
-```
+<img width="776" height="412" alt="image" src="https://github.com/user-attachments/assets/6190bc26-55ef-4284-af44-0394524731b7" />
 
 ---
 
-# 📊 Technology Stack
+#  Technology Stack
 
 | Category | Technologies |
 |-----------|-------------|
@@ -102,7 +82,7 @@ Raw Data
 
 ---
 
-# 📈 Machine Learning Models
+#  Machine Learning Models
 
 The project compares multiple forecasting techniques.
 
@@ -118,7 +98,7 @@ The project compares multiple forecasting techniques.
 
 ---
 
-# 📊 Performance Highlights
+#  Performance Highlights
 
 | Metric | Result |
 |---------|--------|
@@ -131,9 +111,9 @@ The project compares multiple forecasting techniques.
 
 ---
 
-# 📷 Interactive Dashboards
+#  Interactive Dashboards
 
-## 🌍 Global Emissions Explorer
+##  Global Emissions Explorer
 
 <img src="docs/images/dashboard_global.png">
 
@@ -141,7 +121,7 @@ Explore historical greenhouse gas emissions across the world.
 
 ---
 
-## 📈 National Decoupling Index
+##  National Decoupling Index
 
 <img src="docs/images/dashboard_decoupling.png">
 
@@ -149,7 +129,7 @@ Ranks countries based on their economic growth while reducing emissions.
 
 ---
 
-## 🔮 What-If Scenario Simulator
+##  What-If Scenario Simulator
 
 <img src="docs/images/dashboard_whatif.png">
 
@@ -157,7 +137,7 @@ Simulate how GDP and population growth influence future greenhouse gas emissions
 
 ---
 
-# 🏆 Research Contributions
+#  Research Contributions
 
 This work demonstrates:
 
@@ -168,35 +148,6 @@ This work demonstrates:
 - Explainable Climate Analytics
 - Sustainable AI Research
 - Decision Support Analytics
-
----
-
-# 📂 Repository Structure
-
-```
-Data-Science-for-Climate-Action
-
-│
-├── README.md
-├── notebooks
-│     GHG_Project.ipynb
-│
-├── dashboards
-│     global_emission.html
-│     decoupling_index.html
-│     what_if.html
-│
-├── docs
-│     architecture.png
-│     star_schema.png
-│     dashboard_global.png
-│     dashboard_decoupling.png
-│     dashboard_whatif.png
-│
-├── data
-│
-└── LICENSE
-```
 
 ---
 
