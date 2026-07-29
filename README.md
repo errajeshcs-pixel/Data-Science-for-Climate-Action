@@ -11,7 +11,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Research](https://img.shields.io/badge/Research-FICTA%202026-success.svg)
 
-<img width="500" src="https://github.com/user-attachments/assets/41085cf0-eec3-427e-be84-ef3da6cdcaf1">
+<img width="497" height="269" src="https://github.com/user-attachments/assets/41085cf0-eec3-427e-be84-ef3da6cdcaf1">
 <img width="497" height="269" alt="image" src="https://github.com/user-attachments/assets/c6fcaccb-0717-42c6-bcbf-33813d0a5e9f" />
 
 
