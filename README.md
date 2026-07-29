@@ -164,7 +164,7 @@ The project follows the **Medallion Lakehouse Architecture**, ensuring scalable,
 
 #  Support
 
-If you find this repository useful, please consider giving it a **⭐ Star**.
+If you find this repository useful, please consider giving it a **⭐ Star**..
 
 Your support helps increase the visibility of open-source climate analytics research and encourages innovation in **Artificial Intelligence for Sustainability**.
 
